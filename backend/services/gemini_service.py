@@ -1,4 +1,5 @@
 import os
+import time
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -11,9 +12,14 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 
-model = genai.GenerativeModel("gemini-2.5-flash")
+model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
 
 def ask_gemini(prompt: str):
-    response = model.generate_content(prompt)
-    return response.text
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+
+    except Exception as e:
+        print("Gemini API Error:", e)
+        raise e
