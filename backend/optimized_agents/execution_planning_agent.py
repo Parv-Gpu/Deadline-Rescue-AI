@@ -1,82 +1,54 @@
-import json
-from services.gemini_service import ask_gemini
+from optimized_agents.deadline_compression_agent import compress_tasks
+from optimized_agents.balanced_scheduler_agent import build_balanced_schedule
 
 
-def run_execution_planning(tasks_result, user_input: str):
-    prompt = f"""
-You are a combined agent system containing:
-1. Priority Agent
-2. Time Planner Agent
-3. Calendar Agent
-4. MVP Scope Agent
+def build_priority(tasks):
+    ranking = []
 
-User input:
-{user_input}
+    for index, task in enumerate(tasks):
+        name = task.get("task_name", "Task").lower()
 
-Tasks and availability blockers:
-{json.dumps(tasks_result, indent=2)}
+        if "leetcode" in name or "dsa" in name:
+            score = 95
+        elif any(x in name for x in ["dbms", "os", "cn", "oops", "network"]):
+            score = 90
+        elif any(x in name for x in ["frontend", "backend", "deploy"]):
+            score = 88
+        elif any(x in name for x in ["resume", "hr"]):
+            score = 82
+        else:
+            score = 75
 
-Return ONLY valid JSON.
+        score = max(55, score - index * 2)
 
-JSON format:
-{{
-  "priority_ranking": [
-    {{
-      "task_name": "",
-      "parent_task": "",
-      "priority_score": 0,
-      "priority_level": "",
-      "reason": "",
-      "confidence_score": 0.0
-    }}
-  ],
-  "today_plan": [
-    {{
-      "time_block": "",
-      "task_name": "",
-      "focus_area": "",
-      "expected_output": ""
-    }}
-  ],
-  "calendar_events": [
-    {{
-      "title": "",
-      "start_time": "",
-      "end_time": ""
-    }}
-  ],
-  "mvp_scope": {{
-    "must_have": [],
-    "should_have": [],
-    "can_skip": []
-  }},
-  "planning_strategy": ""
-}}
+        ranking.append({
+            "task_name": task.get("task_name", "Task"),
+            "parent_task": task.get("parent_task", ""),
+            "priority_score": score,
+            "priority_level": "Critical" if score >= 90 else "High" if score >= 75 else "Medium",
+            "reason": "Prioritized using deadline pressure, workload, and interview importance.",
+            "confidence_score": 0.86,
+        })
 
-Rules:
-- priority_score must be from 0 to 100.
-- priority_level must be one of: Critical, High, Medium, Low.
-- Use 90-100 for urgent deadline-critical tasks.
-- Use 70-89 for important near-deadline tasks.
-- Use 40-69 for useful but not urgent tasks.
-- Use below 40 for low urgency tasks.
-- Do not rank parent tasks above concrete subtasks unless parent itself needs action.
-- If parent task estimated_hours is 0, prioritize its subtasks.
-- If user studies at night, schedule deep work at night.
-- The user studies from 10 PM to 4 AM if mentioned.
-- Add realistic breaks.
-- Do not schedule more than 6 focused hours in one night.
-- Today's plan should focus mainly on Critical and High tasks.
-- Calendar events should include every today_plan block.
-- Calendar start_time and end_time should be ISO-like strings.
-- mvp_scope must be specific to project/hackathon tasks.
-- must_have = required for working submission.
-- should_have = improves quality but not mandatory.
-- can_skip = features to drop under deadline pressure.
-- Keep reasons short, max 20 words.
-- confidence_score must be between 0 and 1.
-"""
+    return ranking
 
-    response = ask_gemini(prompt)
-    response = response.replace("```json", "").replace("```", "").strip()
-    return json.loads(response)
+
+def run_execution_planning(tasks_result, user_input):
+    compressed = compress_tasks(tasks_result, user_input)
+    schedule = build_balanced_schedule(compressed, user_input)
+
+    tasks = compressed["tasks"]
+
+    return {
+        "priority_ranking": build_priority(tasks),
+        "today_plan": schedule["today_plan"],
+        "day_wise_plan": schedule["day_wise_plan"],
+        "calendar_events": schedule["calendar_events"],
+        "schedule_analysis": schedule["schedule_analysis"],
+        "mvp_scope": {
+            "must_have": [t.get("task_name", "Task") for t in tasks[:3]],
+            "should_have": [t.get("task_name", "Task") for t in tasks[3:5]],
+            "can_skip": ["Extra projects", "Advanced polish", "Low-priority revision"],
+        },
+        "planning_strategy": "Deadline Compression Agent first fits the workload into the user's deadline. Balanced Scheduler Agent then creates day-wise focus batches instead of scheduling one subject continuously.",
+    }
