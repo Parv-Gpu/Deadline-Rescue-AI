@@ -1,77 +1,52 @@
 import { useState } from "react";
 
 function WhatIfSimulator({ result }) {
+  const [extraHours, setExtraHours] = useState(2);
 
-  const [extraHours,setExtraHours]=useState(2);
+  const risk = result.decision_result?.risk_report?.[0]?.risk_score || 50;
+  const success = result.decision_result?.success_probability || 50;
 
-  if(!result) return null;
+  const improvedRisk = Math.max(5, risk - extraHours * 4);
+  const improvedSuccess = Math.min(95, success + extraHours * 5);
 
-  const risk=result.decision_result?.risk_report?.[0]?.risk_score || 80;
+  return (
+    <section className="premium-card simulator-polish">
+      <p className="eyebrow">Simulation</p>
+      <h3>What if you study extra?</h3>
 
-  const newRisk=Math.max(5,risk-extraHours*4);
+      <div className="simulator-control">
+        <div>
+          <span>Extra study per day</span>
+          <b>{extraHours} hrs/day</b>
+        </div>
 
-  const probability=100-newRisk;
+        <input
+          type="range"
+          min="0"
+          max="6"
+          value={extraHours}
+          onChange={(e) => setExtraHours(Number(e.target.value))}
+        />
+      </div>
 
-  return(
+      <div className="simulator-results">
+        <div>
+          <span>New Risk</span>
+          <b>{improvedRisk}/100</b>
+        </div>
 
-<section className="premium-card">
+        <div>
+          <span>Success</span>
+          <b>{improvedSuccess}%</b>
+        </div>
 
-<p className="eyebrow">Simulation</p>
-
-<h3>What If Simulator</h3>
-
-<label>
-
-Extra Study Hours / Day
-
-<input
-
-type="range"
-
-min="0"
-
-max="8"
-
-value={extraHours}
-
-onChange={(e)=>setExtraHours(Number(e.target.value))}
-
-/>
-
-</label>
-
-<div className="sim-grid">
-
-<div>
-
-<h4>{extraHours} hrs/day</h4>
-
-<p>Additional Work</p>
-
-</div>
-
-<div>
-
-<h4>{newRisk}</h4>
-
-<p>New Risk</p>
-
-</div>
-
-<div>
-
-<h4>{probability}%</h4>
-
-<p>Success</p>
-
-</div>
-
-</div>
-
-</section>
-
-  )
-
+        <div>
+          <span>Impact</span>
+          <b>{extraHours === 0 ? "No change" : "Improved"}</b>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export default WhatIfSimulator;

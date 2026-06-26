@@ -5,83 +5,103 @@ function ExecutiveSummary({ result }) {
 
   const tasks = result.tasks_result?.tasks || [];
   const risks = result.decision_result?.risk_report || [];
-  const priorities = result.execution_result?.priority_ranking || [];
   const calendarEvents = result.execution_result?.calendar_events || [];
-  const mvp = result.execution_result?.mvp_scope;
   const schedule = result.execution_result?.schedule_analysis;
+  const recommendation = result.decision_result?.ai_recommendation;
 
-  const totalHours = tasks.reduce(
-    (sum, task) => sum + (Number(task.estimated_hours) || 0),
-    0
-  );
+  const success =
+    result.decision_result?.success_probability ??
+    Math.max(5, 100 - (risks[0]?.risk_score || 50));
 
-  const highestRisk = risks.length
-    ? Math.max(...risks.map((risk) => risk.risk_score || 0))
-    : 0;
+  const riskScore = risks[0]?.risk_score || 0;
 
-  const successProbability = Math.max(5, 100 - highestRisk);
-  const topPriority = priorities[0]?.task_name || "highest priority task";
-  const skipList = mvp?.can_skip?.join(", ") || "non-essential features";
+  const topTask =
+    result.execution_result?.priority_ranking?.[0]?.task_name ||
+    tasks[0]?.task_name ||
+    "top priority task";
+
+  const totalHours =
+    schedule?.estimated_required_hours ||
+    tasks.reduce((sum, task) => sum + (Number(task.estimated_hours) || 0), 0);
 
   const readSummary = () => {
     speakText(
-      `You have ${totalHours} hours of estimated work. Highest risk is ${highestRisk} out of 100. Start with ${topPriority}. ${schedule ? `Deadline is ${schedule.deadline_days} days. Available time is ${schedule.available_hours_before_deadline} hours.` : ""}`
+      `Deadline Rescue AI generated your plan. Required work is ${totalHours} hours. Risk is ${riskScore} out of 100. Success probability is ${success} percent. Start with ${topTask}.`
     );
   };
 
   return (
-    <section className="executive-summary premium-card">
+    <section className="executive-card">
       {result.fallback && (
-        <div className="fallback-banner">
-          {result.error || "Using fallback response."}
+        <div className="soft-alert">
+          {result.error || "Using deterministic local planner."}
         </div>
       )}
 
-      <div className="summary-main">
-        <div>
+      <div className="executive-layout">
+        <div className="executive-content">
           <p className="eyebrow">Executive Summary</p>
           <h2>Rescue plan generated</h2>
 
-          <p>
-            You have <b>{totalHours} hours</b> of estimated work with a{" "}
-            <b>{highestRisk}/100 risk score</b>. Start with{" "}
-            <b>{topPriority}</b> and avoid <b>{skipList}</b>.
+          <p className="summary-copy">
+            Required work is <b>{totalHours} hours</b>. Current risk is{" "}
+            <b>{riskScore}/100</b>, success probability is <b>{success}%</b>,
+            and the first priority is <b>{topTask}</b>.
           </p>
 
           {schedule && (
-            <div className="deadline-analysis-box">
-              <b>Deadline Analysis</b>
+            <div className="mini-metric-grid">
+              <div>
+                <span>Deadline</span>
+                <b>{schedule.deadline_days} days</b>
+              </div>
+              <div>
+                <span>Required</span>
+                <b>{schedule.estimated_required_hours} hrs</b>
+              </div>
+              <div>
+                <span>Available</span>
+                <b>{schedule.available_hours_before_deadline} hrs</b>
+              </div>
+              <div>
+                <span>Deficit</span>
+                <b>{schedule.time_deficit_hours} hrs</b>
+              </div>
+            </div>
+          )}
 
-              <div className="deadline-analysis-grid">
-                <div>
-                  <span>Deadline</span>
-                  <strong>{schedule.deadline_days} days</strong>
-                </div>
-
-                <div>
-                  <span>Required</span>
-                  <strong>{schedule.estimated_required_hours} hrs</strong>
-                </div>
-
-                <div>
-                  <span>Available</span>
-                  <strong>{schedule.available_hours_before_deadline} hrs</strong>
-                </div>
-
-                <div>
-                  <span>Deficit</span>
-                  <strong>{schedule.time_deficit_hours} hrs</strong>
-                </div>
+          {recommendation && (
+            <div className="recommendation-panel">
+              <div>
+                <p className="eyebrow">AI Recommendation</p>
+                <h3>{recommendation.title}</h3>
+                <p>{recommendation.summary}</p>
               </div>
 
-              <p className={schedule.overloaded ? "risk-text" : "success-text"}>
-                {schedule.recommendation}
-              </p>
+              <div className="recommendation-columns">
+                <div>
+                  <b>Focus</b>
+                  <ul>
+                    {recommendation.recommended_focus?.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <b>Reduce</b>
+                  <ul>
+                    {recommendation.recommended_cuts?.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="summary-actions">
+        <div className="executive-actions">
           <button onClick={() => downloadJSON(result)}>JSON</button>
           <button onClick={printPDF}>PDF</button>
           <button onClick={() => downloadICS(calendarEvents)}>Calendar</button>
@@ -97,17 +117,17 @@ function ExecutiveSummary({ result }) {
 
         <div className="summary-pill danger">
           <span>Risk</span>
-          <b>{highestRisk}/100</b>
+          <b>{riskScore}/100</b>
         </div>
 
         <div className="summary-pill success">
           <span>Success</span>
-          <b>{successProbability}%</b>
+          <b>{success}%</b>
         </div>
 
         <div className="summary-pill">
           <span>Hours</span>
-          <b>{schedule?.estimated_required_hours || totalHours}</b>
+          <b>{totalHours}</b>
         </div>
       </div>
     </section>

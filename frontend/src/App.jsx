@@ -17,11 +17,11 @@ import { analyzeDeadline, getHistory, getHistoryById } from "./services/api";
 
 const loadingSteps = [
   "Extracting tasks",
-  "Normalizing deadlines",
-  "Estimating effort",
-  "Ranking priorities",
-  "Predicting risks",
+  "Compressing workload",
+  "Creating balanced schedule",
+  "Calculating risk",
   "Building recovery plan",
+  "Preparing dashboard",
 ];
 
 function App() {
@@ -60,26 +60,39 @@ function App() {
   }, [loading]);
 
   const handleAnalyze = async (userInput) => {
+    if (!userInput.trim()) return;
+
     setLoading(true);
     setStepIndex(0);
 
     try {
       const data = await analyzeDeadline(userInput);
-      setResult(data);
+
+      setResult({
+        ...data,
+        user_input: userInput,
+      });
+
       setActiveTab("dashboard");
       await loadHistory();
     } catch (error) {
       console.error("Analyze failed:", error);
       alert("Backend error. Make sure FastAPI is running on port 8000.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleOpenHistory = async (id) => {
     try {
       const data = await getHistoryById(id);
-      setResult(data.response || data);
+      const response = data.response || data;
+
+      setResult({
+        ...response,
+        user_input: data.user_input || response.user_input || "",
+      });
+
       setActiveTab("dashboard");
     } catch (error) {
       console.error("History open failed:", error);
@@ -90,10 +103,11 @@ function App() {
     if (!result) {
       return (
         <div className="empty-state premium-card">
-          <h2>Start by describing your deadlines</h2>
+          <h2>Start by describing your deadline</h2>
           <p>
-            Use text or voice input. Deadline Rescue AI will generate a risk
-            score, recovery plan, schedule, team split, and calendar export.
+            Add pending tasks, deadline, available hours, team members, or
+            blockers. Deadline Rescue AI will generate a realistic recovery
+            plan.
           </p>
         </div>
       );
@@ -102,8 +116,19 @@ function App() {
     if (activeTab === "dashboard") return <DashboardTab result={result} />;
     if (activeTab === "planning") return <PlanningTab result={result} />;
     if (activeTab === "calendar") return <CalendarTab result={result} />;
-    if (activeTab === "team") return <TeamMode tasks={result.tasks_result?.tasks || []} />;
-    if (activeTab === "insights") return <InsightTab result={result} history={history} />;
+
+    if (activeTab === "team") {
+      return (
+        <TeamMode
+          tasks={result.tasks_result?.tasks || []}
+          userInput={result.user_input || ""}
+        />
+      );
+    }
+
+    if (activeTab === "insights") {
+      return <InsightTab result={result} history={history} />;
+    }
 
     return <DashboardTab result={result} />;
   };

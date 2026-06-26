@@ -1,73 +1,133 @@
-function InsightsTab({ result, history = [] }) {
-  const risks = result.decision_result?.risk_report || [];
+function InsightTab({ result, history = [] }) {
+  const risk = result.decision_result?.risk_report?.[0];
+  const burnout = result.decision_result?.burnout_report;
   const notifications = result.decision_result?.notifications || [];
+  const suggestions = result.decision_result?.ai_suggestions || [];
+  const schedule = result.execution_result?.schedule_analysis || {};
 
-  const highestRisk = risks.length
-    ? Math.max(...risks.map((risk) => risk.risk_score || 0))
-    : 0;
+  const currentRisk = risk?.risk_score || 0;
+  const previousRisk =
+    history?.[1]?.response?.decision_result?.risk_report?.[0]?.risk_score ||
+    history?.[1]?.decision_result?.risk_report?.[0]?.risk_score ||
+    null;
 
-  const previousRisk = history.length >= 2 ? Math.min(100, highestRisk + 8) : null;
+  const riskTrend =
+    previousRisk === null
+      ? "New analysis"
+      : currentRisk < previousRisk
+      ? "Risk reduced"
+      : currentRisk > previousRisk
+      ? "Risk increased"
+      : "Stable risk";
+
+  const success = result.decision_result?.success_probability || 0;
 
   return (
-    <div className="tab-page">
-      <section className="premium-card">
-        <p className="eyebrow">Risk Report</p>
-        <h3>Why this plan is risky</h3>
+    <div className="tab-page fade-in">
+      <section className="insight-hero-card">
+        <div>
+          <p className="eyebrow">Insights</p>
+          <h2>AI planning intelligence</h2>
+          <p>
+            Deadline Rescue AI analyzed workload pressure, available time,
+            burnout risk, recovery strategy and progress trend.
+          </p>
+        </div>
 
-        <div className="risk-grid">
-          {risks.map((risk, index) => (
-            <div className="risk-card" key={index}>
-              <h4>{risk.task_name}</h4>
-              <p>
-                <b>Risk:</b> {risk.risk_score}/100
-              </p>
-              <p>
-                <b>Level:</b> {risk.risk_level}
-              </p>
-              <p>{risk.risk_reason}</p>
-              <p>
-                <b>Action:</b> {risk.risk_reduction_action}
-              </p>
+        <div className="insight-score">
+          <span>{success}%</span>
+          <small>Success Probability</small>
+        </div>
+      </section>
+
+      <section className="insight-metrics-grid">
+        <div className="insight-metric-card">
+          <span>Risk Score</span>
+          <b>{currentRisk}/100</b>
+          <p>{risk?.risk_level || "Low"} risk</p>
+        </div>
+
+        <div className="insight-metric-card">
+          <span>Required</span>
+          <b>{schedule.estimated_required_hours || 0}h</b>
+          <p>Total work estimated</p>
+        </div>
+
+        <div className="insight-metric-card">
+          <span>Available</span>
+          <b>{schedule.available_hours_before_deadline || 0}h</b>
+          <p>Before deadline</p>
+        </div>
+
+        <div className="insight-metric-card">
+          <span>Burnout</span>
+          <b>{burnout?.burnout_score || 0}/100</b>
+          <p>{burnout?.burnout_level || "Low"} pressure</p>
+        </div>
+      </section>
+
+      <section className="insight-two-col">
+        <div className="premium-card">
+          <p className="eyebrow">Risk Reasoning</p>
+          <h3>Why this plan has this risk</h3>
+
+          <div className="reasoning-box">
+            <h4>{risk?.risk_level || "Low"} Risk</h4>
+            <p>{risk?.risk_reason}</p>
+
+            <div className="reasoning-action">
+              <b>Recommended action</b>
+              <p>{risk?.risk_reduction_action}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="premium-card">
+          <p className="eyebrow">Trend</p>
+          <h3>Risk movement</h3>
+
+          <div className="trend-card">
+            <div>
+              <span>Previous</span>
+              <b>{previousRisk === null ? "N/A" : `${previousRisk}/100`}</b>
+            </div>
+
+            <div>
+              <span>Current</span>
+              <b>{currentRisk}/100</b>
+            </div>
+
+            <div>
+              <span>Status</span>
+              <b>{riskTrend}</b>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="premium-card">
+        <p className="eyebrow">AI Suggestions</p>
+        <h3>What to improve next</h3>
+
+        <div className="insight-suggestion-grid">
+          {suggestions.map((item, index) => (
+            <div className="insight-suggestion-card" key={index}>
+              <div>{index + 1}</div>
+              <p>{item}</p>
             </div>
           ))}
         </div>
       </section>
 
       <section className="premium-card">
-        <p className="eyebrow">History Comparison</p>
-        <h3>Risk trend</h3>
+        <p className="eyebrow">Smart Alerts</p>
+        <h3>Notifications</h3>
 
-        {previousRisk ? (
-          <div className="comparison-box">
-            <div>
-              <span>Previous Risk</span>
-              <b>{previousRisk}/100</b>
-            </div>
-
-            <div>
-              <span>Current Risk</span>
-              <b>{highestRisk}/100</b>
-            </div>
-
-            <div>
-              <span>Trend</span>
-              <b>{highestRisk < previousRisk ? "Risk Reduced" : "Risk Increased"}</b>
-            </div>
-          </div>
-        ) : (
-          <p className="muted">Run more analyses to compare risk trends over time.</p>
-        )}
-      </section>
-
-      <section className="premium-card">
-        <p className="eyebrow">Notifications</p>
-        <h3>Smart alerts</h3>
-
-        <div className="notification-list">
-          {notifications.map((note, index) => (
-            <div className="notification-card" key={index}>
-              <b>{note.type}</b>
-              <p>{note.message}</p>
+        <div className="alert-modern-grid">
+          {notifications.map((item, index) => (
+            <div className="alert-modern-card" key={index}>
+              <span>{item.type}</span>
+              <p>{item.message}</p>
             </div>
           ))}
         </div>
@@ -76,4 +136,4 @@ function InsightsTab({ result, history = [] }) {
   );
 }
 
-export default InsightsTab;
+export default InsightTab;

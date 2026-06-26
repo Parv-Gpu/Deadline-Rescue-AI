@@ -263,11 +263,7 @@ def deadline_rescue(request: TaskRequest):
 
 @app.post("/deadline-rescue-fast")
 def deadline_rescue_fast(request: TaskRequest):
-    cache_key = get_cache_key(request.user_input + "_v3_balanced")
-
-    # Do not return old cache during planner testing
-    # if cache_key in response_cache:
-    #     return {"cached": True, **response_cache[cache_key]}
+    cache_key = get_cache_key(request.user_input + "_smart_features_v1")
 
     fallback_used = True
 
@@ -278,7 +274,7 @@ def deadline_rescue_fast(request: TaskRequest):
         request.user_input
     )
 
-    decision_result = local_decision_agent(
+    decision_result = run_decision_agent(
         tasks_result,
         execution_result,
         request.user_input
@@ -288,18 +284,20 @@ def deadline_rescue_fast(request: TaskRequest):
         "cached": False,
         "fallback": fallback_used,
         "error": "Using deterministic local planner for realistic scheduling.",
-        "system_type": "Optimized 11-agent workflow with deterministic smart scheduler",
+        "system_type": "Optimized 13-agent workflow with smart risk, recovery, team and calendar intelligence",
         "logical_agents": [
             "Task Extraction Agent",
             "Date Normalization Agent",
             "Effort Estimation Agent",
             "Priority Agent",
-            "Smart Scheduler Agent",
+            "Deadline Compression Agent",
+            "Balanced Scheduler Agent",
             "Calendar Agent",
-            "Risk Prediction Agent",
+            "Dynamic Risk Agent",
             "Recovery Planner Agent",
-            "Productivity Coach Agent",
-            "Habit Tracker Agent",
+            "Burnout Prediction Agent",
+            "Team Assignment Agent",
+            "Email Schedule Agent",
             "Notification Agent",
         ],
         "tasks_result": tasks_result,

@@ -1,148 +1,119 @@
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  RadialBarChart,
-  RadialBar,
-} from "recharts";
-
-const COLORS = ["#2563eb", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6"];
+import DeadlineCountdown from "./DeadlineCountdown";
+import RiskBreakdown from "./RiskBreakdown";
 
 function DashboardTab({ result }) {
   const tasks = result.tasks_result?.tasks || [];
   const risks = result.decision_result?.risk_report || [];
-  const todayPlan = result.execution_result?.today_plan || [];
-  const mvp = result.execution_result?.mvp_scope;
-
-  const chartData = tasks
-    .filter((task) => task.estimated_hours > 0)
-    .map((task) => ({
-      name: task.task_name,
-      value: task.estimated_hours,
-    }));
-
-  const totalHours = chartData.reduce((sum, item) => sum + item.value, 0);
-
-  const highestRisk = risks.length
-    ? Math.max(...risks.map((risk) => risk.risk_score || 0))
-    : 0;
-
-  const riskColor =
-    highestRisk >= 71 ? "#ef4444" : highestRisk >= 36 ? "#f59e0b" : "#22c55e";
-
-  const successProbability = Math.max(5, 100 - highestRisk);
-  const daysNeeded = Math.ceil(totalHours / 4);
+  const today = result.execution_result?.today_plan || [];
+  const schedule = result.execution_result?.schedule_analysis || {};
+  const success = result.decision_result?.success_probability ?? 50;
+  const riskScore = risks[0]?.risk_score || 0;
+  const suggestions = result.decision_result?.ai_suggestions || [];
 
   return (
-    <div className="tab-page">
-      <div className="dashboard-hero-grid">
-        <div className="risk-gauge-card premium-card">
-          <p className="eyebrow">Risk Gauge</p>
+    <div className="tab-page fade-in">
+      <DeadlineCountdown result={result} />
 
-          <ResponsiveContainer width="100%" height={240}>
-            <RadialBarChart
-              innerRadius="72%"
-              outerRadius="100%"
-              startAngle={180}
-              endAngle={0}
-              data={[{ name: "Risk", value: highestRisk }]}
-            >
-              <RadialBar dataKey="value" fill={riskColor} cornerRadius={20} />
-            </RadialBarChart>
-          </ResponsiveContainer>
-
-          <div className="gauge-value">
-            <h2>{highestRisk}/100</h2>
-            <p>
-              {highestRisk >= 71
-                ? "High Risk"
-                : highestRisk >= 36
-                ? "Medium Risk"
-                : "Low Risk"}
-            </p>
+      <section className="hero-metrics">
+        <div className="metric-visual-card">
+          <p className="eyebrow">Risk</p>
+          <div className="risk-orb">
+            <span>{riskScore}</span>
           </div>
+          <h3>{risks[0]?.risk_level || "Unknown"} Risk</h3>
+          <p>Risk is calculated from workload, deadline, daily hours and deficit.</p>
         </div>
 
-        <div className="premium-card">
-          <p className="eyebrow">Smart Insights</p>
+        <div className="metric-visual-card">
+          <p className="eyebrow">Success</p>
+          <div className="success-ring">
+            <span>{success}%</span>
+          </div>
+          <h3>Completion Forecast</h3>
+          <p>Based on available time and current workload pressure.</p>
+        </div>
+
+        <div className="metric-visual-card wide">
+          <p className="eyebrow">AI Insights</p>
           <h3>What the AI noticed</h3>
-
-          <div className="insight-list">
-            <p>• Total workload is {totalHours} hours.</p>
-            <p>• Success probability is {successProbability}%.</p>
-            <p>• Estimated completion needs {daysNeeded} focused days.</p>
-            <p>
-              • Skip:{" "}
-              {mvp?.can_skip?.length ? mvp.can_skip.join(", ") : "non-essential polish"}.
-            </p>
+          <div className="insight-grid">
+            <div>
+              <span>Required</span>
+              <b>{schedule.estimated_required_hours || 0} hrs</b>
+            </div>
+            <div>
+              <span>Available</span>
+              <b>{schedule.available_hours_before_deadline || 0} hrs</b>
+            </div>
+            <div>
+              <span>Deficit</span>
+              <b>{schedule.time_deficit_hours || 0} hrs</b>
+            </div>
+            <div>
+              <span>Deadline</span>
+              <b>{schedule.deadline_days || 0} days</b>
+            </div>
           </div>
         </div>
+      </section>
 
+      <section className="premium-card">
+        <p className="eyebrow">AI Suggestions</p>
+        <h3>Your next best moves</h3>
+
+        <div className="suggestion-list compact">
+          {suggestions.map((item, index) => (
+            <div className="suggestion-card" key={index}>
+              <b>{index + 1}</b>
+              <p>{item}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="dashboard-split">
         <div className="premium-card">
-          <p className="eyebrow">Completion Forecast</p>
-          <h3>{successProbability}% success probability</h3>
-
-          <div className="progress-track">
-            <div
-              className="progress-fill-blue"
-              style={{ width: `${successProbability}%` }}
-            ></div>
-          </div>
-
-          <p className="muted">
-            Based on current risk, estimated effort, and available planning window.
-          </p>
-        </div>
-      </div>
-
-      <div className="dashboard-two-col">
-        <section className="premium-card">
           <p className="eyebrow">Effort Distribution</p>
           <h3>Where your time is going</h3>
 
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={65}
-                  outerRadius={115}
-                  label={({ name, value }) => `${name}: ${value}h`}
-                >
-                  {chartData.map((_, index) => (
-                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="muted">No effort data available.</p>
-          )}
-        </section>
+          <div className="effort-bars clean">
+            {tasks
+              .filter((task) => task.estimated_hours > 0)
+              .map((task, index) => (
+                <div className="effort-row" key={index}>
+                  <span>{task.task_name}</span>
+                  <div className="effort-track">
+                    <div
+                      className="effort-fill"
+                      style={{
+                        width: `${Math.min(Number(task.estimated_hours) * 4, 100)}%`,
+                      }}
+                    ></div>
+                  </div>
+                  <b>{task.estimated_hours}h</b>
+                </div>
+              ))}
+          </div>
+        </div>
 
-        <section className="premium-card">
+        <div className="premium-card">
           <p className="eyebrow">Today</p>
           <h3>Rescue Plan</h3>
 
-          <div className="timeline-list">
-            {todayPlan.map((plan, index) => (
-              <div className="timeline-block" key={index}>
-                <span>{plan.time_block}</span>
-                <h4>{plan.task_name}</h4>
-                <p>{plan.focus_area}</p>
-                <small>{plan.expected_output}</small>
+          <div className="today-list modern">
+            {today.map((item, index) => (
+              <div className="today-card" key={index}>
+                <div className="today-time">{item.time_block}</div>
+                <h4>{item.task_name}</h4>
+                <p>{item.focus_area}</p>
+                <small>{item.expected_output}</small>
               </div>
             ))}
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
+
+      <RiskBreakdown result={result} />
     </div>
   );
 }
